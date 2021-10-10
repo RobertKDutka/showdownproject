@@ -4,7 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import TimeoutException
 
 
 def open_browser():
@@ -292,13 +292,13 @@ def select_move(driver, movenum):
 
 
 # Return 0 on successfully choosing a switch, 1 otherwise
-def switch_pokemon(driver, pokemonname):
-    # Close Sounds menu
+def switch_pokemon(driver, pokemonnum):
+    # Swap in new pokemon
     if try_click_css(
         2,
         driver,
         5,
-        "div.switchmenu button[value='" + pokemonname + "']",
+        "div.switchmenu button[value='" + pokemonnum + "']",
         "Pokemon Switch Button",
         1,
     ):
@@ -420,7 +420,7 @@ def update_battle_history(driver, last_turn_num):
                 message_div = WebDriverWait(driver, 2).until(
                     EC.element_to_be_clickable((By.CSS_SELECTOR, css_selector))
                 )
-            except NoSuchElementException:
+            except TimeoutException:
                 f.close()
                 return result
             except:
@@ -591,8 +591,8 @@ def switchin_ally(driver):
 
 
 # TODO s
-#       Determine the stage of the battle (need to select target,  battle is over, )
-#       Implement control flow for battle
+#
+#
 #
 #       Adjust timings for certain parts, like waiting for opponent
 #       If dont find something, try to find it again
@@ -607,6 +607,7 @@ def switchin_ally(driver):
 #       Create a log file
 #       If nicknames are not turned off, do not save battle
 #       Do checks for errors in the main segment below
+#       Fix switch ins - cant replicate the problem I had before so its fixed?
 
 
 ##################################################
@@ -628,7 +629,7 @@ battle_found = challenge_player(driver, "Dutmeister", "gen8vgc2021series10")
 if battle_found == 0:
     print("Battle was accepted")
     mute_battle(driver)
-    turnoff_nicknames(driver)  ###
+    turnoff_nicknames(driver)
 
     get_opponents_team(driver, username)
 
@@ -649,6 +650,7 @@ if battle_found == 0:
 
         while 1:
             result = determine_state(driver)
+            print("Resulting State is: ", result)
 
             if result == 1:  # Waiting for
                 wait_for_animations_and_skip(driver)
