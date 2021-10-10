@@ -9,7 +9,8 @@ from sim_parser import outputParser
 from heuristics import *
 from random import choice
 
-showdown_cmd = './showdownsimulator/pokemon-showdown/pokemon-showdown simulate-battle'
+# showdown_cmd = './showdownsimulator/pokemon-showdown/pokemon-showdown simulate-battle'
+showdown_cmd = 'node showdownsimulator/pokemon-showdown/pokemon-showdown simulate-battle'
 
 def prin(*args):
     if False:
@@ -53,7 +54,7 @@ def runSimList(state, p1moves, p2moves, side=1, sims_proc=10):
     
     best = max(scores, key=lambda x:x[1])
     
-    print('Best:\t', best)
+#     print('Best:\t', best)
     
     return scores
 

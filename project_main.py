@@ -10,6 +10,8 @@ from selenium.webdriver.chrome.service import Service
 
 import time
 
+from simulator_obj import simulator
+
 
 def open_browser():
     # Allow notifications
@@ -18,7 +20,7 @@ def open_browser():
     chrome_options.add_experimental_option("prefs", prefs)
     chrome_options.add_experimental_option("excludeSwitches", ["enable-logging"])
     service = Service(
-        "C:/Users/Robert Dutka/Desktop/showdown-project/webdrivers/chromedriver.exe"
+        "C:/Users/Krzysztof Dutka/OneDrive/Desktop/Showdown Project/showdownproject/webdrivers/chromedriver.exe"
     )
 
     driver = webdriver.Chrome(options=chrome_options, service=service)
@@ -201,6 +203,8 @@ def challenge_player(driver, opp_name, formatname):
         print("Timed out or could not find open button.")
         return 0
 
+    time.sleep(1)
+
     try:
         challenge_btn = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable(
@@ -311,12 +315,17 @@ def mute_battle(driver):
 def find_click_button_by_xpath_text(driver, word):
     try:
         pokemon_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[text()='" + word + "']"))
+            # EC.element_to_be_clickable((By.XPATH, "//button[text()='" + word + "']"))
+            EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, "button[data-tooltip='switchpokemon|" + word + "']")            
+            )
+        # data-tooltip="switchpokemon|1"
         )
         pokemon_btn.click()
     except:
         print("Timed out or could not button.")
-        print("//button[text()='" + word + "']")
+        # print("//button[text()='" + word + "']")
+        print("button[data-tooltip='switchpokemon|" + word + "']")
 
 
 def select_pokemon(driver, pokemonnamelist):
@@ -693,6 +702,9 @@ def switchin_ally(driver):
 
 ##################################################
 #####START
+
+
+
 username = "My Name is John Shaft"
 
 driver = open_browser()
@@ -703,9 +715,9 @@ login(driver, username, "PszczolaLata2189")
 
 select_format_home_page(driver, "gen8vgc2021series10")
 
-upload_team(driver, "palkiateam.txt", "gen8vgc2021series10")
+upload_team(driver, "team.txt", "gen8vgc2021series10")
 
-battle_found = challenge_player(driver, "Dutmeister", "gen8vgc2021series10")
+battle_found = challenge_player(driver, "WonderFluffles", "gen8vgc2021series10")
 
 if battle_found:
     print("Battle was accepted")

@@ -20,9 +20,9 @@ class NeuralNetTeams(torch.nn.Module):
         self.sigmoid = nn.Sigmoid()
         self.softmax = nn.Softmax(dim = 2)
         
-        self.fc1 = nn.Linear(979, 20)
+        self.fc1 = nn.Linear(979, 40)
 #         self.fc2 = nn.Linear(50, 50)
-        self.fc3 = nn.Linear(20, 979 * 3)
+        self.fc3 = nn.Linear(40, 979 * 3)
         
         
         self.optimizer = optim.SGD(self.get_parameters(), lrate, momentum=0.1,
@@ -114,4 +114,12 @@ class NeuralNetTeams(torch.nn.Module):
                 target[n, poke, 2] = 1
 
         return target
-        
+
+    def save_model(self, path):
+        torch.save(self, path)
+
+    def load_model(self, path):
+        self = torch.load(path)
+    
+    
+    

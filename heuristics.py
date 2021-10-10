@@ -4,14 +4,14 @@ def heuristic(prevState, state, side=1):
     score = 0
     
     for poke in state.team2.full:
-        if poke.faint != 'dead':
+        if poke.faint != 'alive':
             score += 100
         score += (1 - poke.hp / poke.stats['hp']) * 100
 #         score += statusScore(poke.status)
 #         score -= sumBoosts(poke.boosts)
     
     for poke in state.team1.full:
-        if poke.faint != 'dead':
+        if poke.faint != 'alive':
             score -= 100
         score -= (1 - poke.hp / poke.stats['hp']) * 100
 #         score -= statusScore(poke.status)

@@ -92,7 +92,9 @@ def getPikalytics(pokename, num_moves=4, num_items=1, num_abilities=1, num_natur
             break;
         elif (match.group(1) == 'Other'):
             break
-        moves.append(match.group(1))
+        da_move = match.group(1)
+        da_move = da_move.replace('-', '')
+        moves.append(da_move)
         text = text[match.span()[1]:]
 
     res = re.search(item_wrapper, text)
@@ -156,10 +158,10 @@ def calcStats(pokemon, pika_stats, lvl=50):
     evs = pika_stats[4]
     
     for stat in stat_names:
-        pokemon.stats[stat] = (2 * base_stats[stat] + 31 + evs[0][stat] // 4) * lvl // 100 + 5
+        pokemon.stats[stat] = (2 * base_stats[stat] + pokemon.ivs[stat] + evs[0][stat] // 4) * lvl // 100 + 5
         pokemon.evs[stat] = evs[0][stat]
     
-    pokemon.stats['hp'] = (2 * base_stats['hp'] + 31 + evs[0]['hp'] // 4) * lvl // 100 + lvl + 10
+    pokemon.stats['hp'] = (2 * base_stats['hp'] + pokemon.ivs[stat] + evs[0]['hp'] // 4) * lvl // 100 + lvl + 10
     pokemon.hp = pokemon.stats['hp']
     pokemon.evs['hp'] = evs[0]['hp']
     
