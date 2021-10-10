@@ -1,18 +1,13 @@
 from selenium import webdriver
-from selenium.common.exceptions import TimeoutException
 
 from selenium.webdriver.common.by import By
-from selenium.webdriver.remote import webelement
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-
-import time
+from selenium.common.exceptions import TimeoutException
 
 
 def open_browser():
-    # Allow notifications
     chrome_options = webdriver.ChromeOptions()
     prefs = {"profile.default_content_setting_values.notifications": 2}
     chrome_options.add_experimental_option("prefs", prefs)
@@ -26,104 +21,122 @@ def open_browser():
     return driver
 
 
-def login(driver, username, password):
+# Return 0 on success, returns error code on except
+def click_button_xpath_noerror(driver, timeout, word, error_message, error_code):
     try:
-        login_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, ".userbar button[name='login']")
-            )
+        btn = WebDriverWait(driver, timeout).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[text()='" + word + "']"))
         )
-        login_btn.click()
+        btn.click()
     except:
-        print("Timed out or could not find login button.")
+        print("Could not find button through XPATH: ", error_message)
+        return error_code
 
+    return 0
+
+
+# Returns 0 on success, returns error_code on except
+def click_button_css(driver, timeout, css_text, error_message, error_code):
     try:
-        username_box = WebDriverWait(driver, 10).until(
+        btn = WebDriverWait(driver, timeout).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, css_text))
+        )
+        btn.click()
+    except:
+        print("Could not find button through CSS: ", error_message)
+        return error_code
+
+    return 0
+
+
+# Return 0 if found button and clicked, 1 otherwise
+def try_click_css(num_attempts, driver, timeout, css_text, error_message, error_code):
+    attempts = 0
+    while attempts < num_attempts:
+        if click_button_css(driver, timeout, css_text, error_message, error_code) == 0:
+            return 0
+
+        attempts += 1
+    return error_code
+
+
+# Return 1 on error, 0 on success
+def login(driver, username, password):
+    # Click login
+    if try_click_css(2, driver, 5, ".userbar button[name='login']", "Login Button", 1):
+        return 1
+
+    # Type in username
+    try:
+        username_box = WebDriverWait(driver, 5).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "input[name='username']"))
         )
         username_box.send_keys(username)
     except:
         print("Timed out or could not find username box.")
+        return 1
 
-    try:
-        username_submit_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, ".buttonbar button[type='submit']")
-            )
-        )
-        username_submit_btn.click()
-    except:
-        print("Timed out or could not find username submit.")
+    # Click submit
+    if try_click_css(
+        2, driver, 5, ".buttonbar button[type='submit']", "Submit Button", 1
+    ):
+        return 1
 
+    # Type in password
     try:
-        password_box = WebDriverWait(driver, 10).until(
+        password_box = WebDriverWait(driver, 5).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "input[name='password']"))
         )
         password_box.send_keys(password)
     except:
         print("Timed out or could not find password textbox.")
 
-    try:
-        password_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, ".buttonbar button[type='submit']")
-            )
-        )
-        password_btn.click()
-    except:
-        print("Timed out or could not find password submit button.")
+    # Submit password
+    if try_click_css(
+        2, driver, 5, ".buttonbar button[type='submit']", "Submit Button", 1
+    ):
+        return 1
+
+    return 0
 
 
+# Returns 0 if select format successfully, 1 otherwise
 def select_format_home_page(driver, formatname):
-    try:
-        format_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "button[name='format']"))
-        )
-        format_btn.click()
-    except:
-        print("Timed out or could not find select format button.")
+    # Click select format button
+    if try_click_css(2, driver, 5, "button[name='format']", "Format Button", 1):
+        return 1
 
-    css_selector = "button[value='" + formatname + "']"
+    # Click specific format button
+    if try_click_css(
+        2, driver, 5, "button[value='" + formatname + "']", "Specific Format Button", 1
+    ):
+        return 1
 
-    try:
-        formats_select = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, css_selector))
-        )
-        formats_select.click()
-    except:
-        print("Timed out or could not find vgc2021 series10 button.")
+    return 0
 
 
+# Returns 0 if successfully upload team, 1 otherwise
 def upload_team(driver, filename, formatname):
-    try:
-        teambuilder_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "button[value='teambuilder']"))
-        )
-        teambuilder_btn.click()
-    except:
-        print("Timed out or could not find team builder button.")
+    # Click team builder button
+    if try_click_css(
+        2, driver, 5, "button[value='teambuilder']", "Teambuilder Button", 1
+    ):
+        return 1
 
-    try:
-        newteam_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "button[value='team']"))
-        )
-        newteam_btn.click()
-    except:
-        print("Timed out or could not find team builder button.")
+    # Click team button
+    if try_click_css(2, driver, 5, "button[value='team']", "Team Button", 1):
+        return 1
 
-    try:
-        import_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "button[name='import']"))
-        )
-        import_btn.click()
-    except:
-        print("Timed out or could not find import button.")
+    # Click import button
+    if try_click_css(2, driver, 5, "button[name='import']", "Import Button", 1):
+        return 1
 
+    # Get team from specified team text file
     with open(filename, "r") as f:
         team_string = f.read()
 
     try:
-        teamtextarea = WebDriverWait(driver, 10).until(
+        teamtextarea = WebDriverWait(driver, 5).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, ".teamedit textarea"))
         )
         teamtextarea.click()
@@ -131,55 +144,45 @@ def upload_team(driver, filename, formatname):
     except:
         print("Timed out or could not find team import text area button.")
 
-    try:
-        save_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "button[name='saveImport']"))
-        )
-        save_btn.click()
-    except:
-        print("Timed out or could not find save import button.")
+    # Click save import button
+    if try_click_css(
+        2, driver, 5, "button[name='saveImport']", "Save Import Button", 1
+    ):
+        return 1
 
-    try:
-        selectformat_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, ".teamchartbox button[name='format']")
-            )
-        )
-        selectformat_btn.click()
-    except:
-        print("Timed out or could not find team format button.")
+    # Click select format button
+    if try_click_css(
+        2, driver, 5, ".teamchartbox button[name='format']", "Select Format Button", 1
+    ):
+        return 1
 
-    css_selector = ".popupmenu button[value='" + formatname + "']"
+    # Click specific format button
+    if try_click_css(
+        2,
+        driver,
+        5,
+        ".popupmenu button[value='" + formatname + "']",
+        "Select Specific Format Button",
+        1,
+    ):
+        return 1
 
-    try:
-        format_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, css_selector))
-        )
-        format_btn.click()
-    except:
-        print("Timed out or could not find vgc2021 series 10 button.")
+    # Click home button
+    if try_click_css(2, driver, 5, "a[href='/']", "Home Button", 1):
+        return 1
 
-    try:
-        home_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "a[href='/']"))
-        )
-        home_btn.click()
-    except:
-        print("Timed out or could not find home button.")
+    return 0
 
 
+# Return 0 if successfully challenge player and get accepted, 1 otherwise
 def challenge_player(driver, opp_name, formatname):
-    try:
-        finduser_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "button[name='finduser']"))
-        )
-        finduser_btn.click()
-    except:
-        print("Timed out or could not find Find a User button.")
-        return 0
+    # Click home button
+    if try_click_css(2, driver, 5, "button[name='finduser']", "Find User Button", 1):
+        return 1
 
+    # Type in username to challenge
     try:
-        finduser_box = WebDriverWait(driver, 10).until(
+        finduser_box = WebDriverWait(driver, 5).until(
             EC.element_to_be_clickable(
                 (By.CSS_SELECTOR, ".ps-popup input[name='data']")
             )
@@ -188,10 +191,10 @@ def challenge_player(driver, opp_name, formatname):
         finduser_box.send_keys(opp_name)
     except:
         print("Timed out or could not find username text box.")
-        return 0
+        return 1
 
     try:
-        open_btn = WebDriverWait(driver, 10).until(
+        open_btn = WebDriverWait(driver, 5).until(
             EC.element_to_be_clickable(
                 (By.CSS_SELECTOR, ".buttonbar button[type='submit']")
             )
@@ -199,157 +202,112 @@ def challenge_player(driver, opp_name, formatname):
         open_btn.click()
     except:
         print("Timed out or could not find open button.")
-        return 0
+        return 1
 
-    try:
-        challenge_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, ".ps-popup button[name='challenge']")
-            )
-        )
-        challenge_btn.click()
-    except:
-        print("Timed out or could not find Challenge button.")
-        return 0
+    # Click challenge button
+    if try_click_css(
+        2, driver, 5, ".ps-popup button[name='challenge']", "Challenge Button", 1
+    ):
+        return 1
 
-    try:
-        challenge_format_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (
-                    By.CSS_SELECTOR,
-                    "div.challenge button[name='format']",
-                )
-            )
-        )
-        challenge_format_btn.click()
-    except:
-        print("Timed out or could not find challenge format button.")
-        return 0
+    # Click format button
+    if try_click_css(
+        2, driver, 5, "div.challenge button[name='format']", "Format Button", 1
+    ):
+        return 1
 
-    css_selector = ".popupmenu button[value='" + formatname + "']"
+    # Click specific format button
+    if try_click_css(
+        2,
+        driver,
+        5,
+        ".popupmenu button[value='" + formatname + "']",
+        "Specific Format Button",
+        1,
+    ):
+        return 1
 
-    try:
-        challenge_format_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, css_selector))
-        )
-        challenge_format_btn.click()
-    except:
-        print("Timed out or could not find vgc2021 series 10 button.")
-        return 0
+    # Click challenge button
+    if try_click_css(
+        2, driver, 5, "button[name='makeChallenge']", "Challenge Button", 1
+    ):
+        return 1
 
-    try:
-        challenge_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (
-                    By.CSS_SELECTOR,
-                    "button[name='makeChallenge']",
-                )
-            )
-        )
-        challenge_btn.click()
-    except:
-        print("Timed out or could not find Challenge 2 button.")
-        return 0
+    # Click battle tab button
+    if try_click_css(
+        2,
+        driver,
+        20,
+        "div.maintabbar div.inner ul:nth-of-type(2) a.roomtab.button.notifying.closable",
+        "Battle Button",
+        1,
+    ):
+        return 1
 
-    try:
-        battle1 = WebDriverWait(driver, 20).until(
-            EC.element_to_be_clickable(
-                (
-                    By.CSS_SELECTOR,
-                    "div.maintabbar div.inner ul:nth-of-type(2) a.roomtab.button.notifying.closable",
-                )
-            )
-        )
-    except:
-        print("Timed out or could not find main tab bar")
-        return 0
-
-    return 1
+    return 0
 
 
+# Return 0 if mute battle, 1 if error
 def mute_battle(driver):
-    try:
-        volume_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (
-                    By.CSS_SELECTOR,
-                    "button[name='openSounds']",
-                )
-            )
-        )
-        volume_btn.click()
-    except:
-        print("Timed out or could not find volume button.")
+    # Click Sounds button
+    if try_click_css(2, driver, 5, "button[name='openSounds']", "Sounds Button", 1):
+        return 1
 
-    try:
-        mute_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (
-                    By.CSS_SELECTOR,
-                    "input[name='muted']",
-                )
-            )
-        )
-        mute_btn.click()
-    except:
-        print("Timed out or could not find mute button.")
+    # Click Mute button
+    if try_click_css(2, driver, 5, "input[name='muted']", "Mute Button", 1):
+        return 1
 
-    try:
-        volume_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (
-                    By.CSS_SELECTOR,
-                    "button[name='openSounds']",
-                )
-            )
-        )
-        volume_btn.click()
-    except:
-        print("Timed out or could not find volume button.")
+    # Close Sounds menu
+    if try_click_css(
+        2, driver, 5, "button[name='openSounds']", "Close Sounds Button", 1
+    ):
+        return 1
+
+    return 0
 
 
-def find_click_button_by_xpath_text(driver, word):
-    try:
-        pokemon_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[text()='" + word + "']"))
-        )
-        pokemon_btn.click()
-    except:
-        print("Timed out or could not button.")
-        print("//button[text()='" + word + "']")
-
-
+# Select initial team TODO do checks to see if successful or failure
 def select_pokemon(driver, pokemonnamelist):
     for name in pokemonnamelist:
-        find_click_button_by_xpath_text(driver, name)
+        # Try to find it 1 more time if the first fails
+        if click_button_xpath_noerror(driver, 10, name, "error finding " + name, 1):
+            click_button_xpath_noerror(driver, 10, name, "error finding " + name, 1)
 
     wait_for_animations_and_skip(driver)
 
 
+# Click on a specific move. Returns 0 on success, 1 otherwise.
 def select_move(driver, movenum):
-    try:
-        move_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, "div.movemenu button[value='" + movenum + "']")
-            )
-        )
-        move_btn.click()
-    except:
-        print("Could not find the move")
+    # move must be between 1 and 4
+    if int(movenum) < 1 or int(movenum) > 4:
+        return 1
+
+    # Click a Move Button
+    if try_click_css(
+        2, driver, 5, "div.movemenu button[value='" + movenum + "']", "Move Button", 1
+    ):
+        return 1
+
+    return 0
 
 
-def switch_pokemon(driver, pokemonname):
-    try:
-        move_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, "div.switchmenu button[value='" + pokemonname + "']")
-            )
-        )
-        move_btn.click()
-    except:
-        print("Could not find the pokemon.")
+# Return 0 on successfully choosing a switch, 1 otherwise
+def switch_pokemon(driver, pokemonnum):
+    # Swap in new pokemon
+    if try_click_css(
+        2,
+        driver,
+        5,
+        "div.switchmenu button[value='" + pokemonnum + "']",
+        "Pokemon Switch Button",
+        1,
+    ):
+        return 1
+
+    return 0
 
 
+# Skip animations. TODO something with the return
 def wait_for_animations_and_skip(driver):
     # Try to see if you find the waiting for opponent or go straight to
     try:
@@ -360,30 +318,33 @@ def wait_for_animations_and_skip(driver):
         )
     except:
         print("Could not find waiting for.")
+        return 1
 
-    try:
-        skipButton = WebDriverWait(driver, 30).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, "div.battle-controls button[name='goToEnd']")
-            )
-        )
-        skipButton.click()
-    except:
-        print("Could not find Skip To End button.")
+    # Click Skip Button
+    if try_click_css(
+        2, driver, 30, "div.battle-controls button[name='goToEnd']", "Skip Button", 1
+    ):
+        return 1
+
+    return 0
 
 
+# Selects a target for a move by number (-3 to 3). Return 0 on success, 1 otherwise
 def select_move_target(driver, targetnum):
-    try:
-        move_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, "button[value='" + targetnum + "']")
-            )
-        )
-        move_btn.click()
-    except:
-        print("Could not find the move")
+    # In a double battle, targets would only ever be from -2 to 2
+    if int(targetnum) < -3 or int(targetnum) > 3:
+        return 1
+
+    # Click Skip Button
+    if try_click_css(
+        2, driver, 5, "button[value='" + targetnum + "']", "Targetting Button", 1
+    ):
+        return 1
+
+    return 0
 
 
+# Returns boolean whether or not a move needs to select a target. Returns None on error.
 def get_move_targetting(driver, movenum):
     move_btn = None
     try:
@@ -407,27 +368,37 @@ def get_move_targetting(driver, movenum):
     return False
 
 
+# Attempt to select a move for a pokemon for a turn. Return 0 on success, and 1 on failure
+# TODO instead of input() tell predictor what you are expecting
 def pokemon_turn(driver):
     move = input("Select a move: ")
 
     if move == "switch":
         pokemon_switch = input("Select switch in: ")
-        switch_pokemon(driver, pokemon_switch)
-        return
+        if switch_pokemon(driver, pokemon_switch):
+            return 1
+        return 0
 
     does_move_target = get_move_targetting(driver, move)
 
     if does_move_target == None:
         print("Error getting targeting information.")
-        return
+        return 1
 
-    select_move(driver, move)
+    if select_move(driver, move):
+        return 1
 
-    if does_move_target:  # TODO make this a general method
+    if does_move_target:
         movetarget = input("Select target: ")
-        select_move_target(driver, movetarget)
+        if select_move_target(driver, movetarget):
+            return 1
+
+    return 0
 
 
+# Records the information from the previous turn and saves it into a file, overwriting the old information
+# Returns -1 on failure, 0 if normal turn, 1 if the battle has ended
+# TODO pipe input into predictor/have predictor read from file and signal it
 def update_battle_history(driver, last_turn_num):
     css_selector = (
         "div.inner.message-log h2.battle-history:nth-of-type("
@@ -449,9 +420,12 @@ def update_battle_history(driver, last_turn_num):
                 message_div = WebDriverWait(driver, 2).until(
                     EC.element_to_be_clickable((By.CSS_SELECTOR, css_selector))
                 )
-            except:
+            except TimeoutException:
                 f.close()
                 return result
+            except:
+                f.close()
+                return -1
 
             message_class = message_div.get_attribute("class")
 
@@ -460,42 +434,15 @@ def update_battle_history(driver, last_turn_num):
             elif message_class == "battle-history":
                 if message_div.text.endswith("won the battle!"):
                     result = 1
-                f.write(message_div.text)  # TODO pipe this to the predictor
+                f.write(message_div.text)
                 f.write("\n")
 
-        return -1
+    return -1
 
 
-def check_opponent_faint_switchin(driver):
-    element_n = None
-    try:
-        element_n = WebDriverWait(driver, 10).until(
-            EC.any_of(
-                EC.element_to_be_clickable(
-                    (By.XPATH, "//em[text()='Waiting for opponent...']")
-                ),
-                EC.element_to_be_clickable(
-                    (By.CSS_SELECTOR, "div.battle-controls div.controls div.whatdo")
-                ),
-            )
-        )
-    except:
-        print("Could not find either waiting for, or next move.")
-        return 1
-
-    if element_n.get_attribute("class") != "whatdo":
-        try:
-            skipButton = WebDriverWait(driver, 30).until(
-                EC.element_to_be_clickable(
-                    (By.CSS_SELECTOR, "div.battle-controls button[name='goToEnd']")
-                )
-            )
-            skipButton.click()
-        except:
-            print("Could not find Skip To End button.")
-    return 0
-
-
+# Read the opponents team and send the info to the predictor
+# Returns 0 on success, 1 otherwise
+# TODO pipe into predictor instead of printing to console
 def get_opponents_team(driver, my_name):
     try:
         team = WebDriverWait(driver, 10).until(
@@ -531,51 +478,47 @@ def get_opponents_team(driver, my_name):
             return 1
     except:
         print("Could not find first team")
+        return 1
 
 
+# Turns off nicknames for a battle. If nicknames have failed to be turned off, do not save the battle
+# Return 0 if nicknames disabled, 1 otherwise
 def turnoff_nicknames(driver):
-    try:
-        battle_options = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, "div.battle-options button.icon.button")
-            )
-        )
-        battle_options.click()
-    except:
-        print("Could not find options button.")
+    # Click options Button
+    if try_click_css(
+        2, driver, 5, "div.battle-options button.icon.button", "Options Button", 1
+    ):
+        return 1
 
-    try:
-        nickname_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, "div.ps-popup input[name='ignorenicks']")
-            )
-        )
-        nickname_btn.click()
-    except:
-        print("Could not find nickname off button.")
+    # Disable nicknames
+    if try_click_css(
+        2, driver, 5, "div.ps-popup input[name='ignorenicks']", "Nicknames Button", 1
+    ):
+        return 1
 
-    try:
-        close_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, "div.ps-popup button[name='close']")
-            )
-        )
-        close_btn.click()
-    except:
-        print("Could not find close button.")
+    # Close Options
+    if try_click_css(
+        2, driver, 5, "div.ps-popup button[name='close']", "Close Options Button", 1
+    ):
+        return 1
+
+    return 0
 
 
+# Check if only 1 pokemon remains on your side
+# Returns True, False, or None in case of error
 def is_one_remaining(driver):
     num_fainted = 0
     for i in range(4):
         css_selector = "div.switchmenu button" + " + button" * i
 
         try:
-            pokemon_btn = WebDriverWait(driver, 10).until(
+            pokemon_btn = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, css_selector))
             )
 
             pokemon_status = pokemon_btn.get_attribute("value")
+            # If you can switchin in, value = #, otherwise it will say fainted, or active
             if pokemon_status in ["1", "2", "3", "4"]:
                 continue
 
@@ -585,6 +528,7 @@ def is_one_remaining(driver):
                 num_fainted += 1
         except:
             print("Could not determine if pokemon has fainted or not")
+            return None
 
     if num_fainted == 3:
         return True
@@ -592,33 +536,8 @@ def is_one_remaining(driver):
     return False
 
 
-def check_ally_faint_switchin(driver):
-    try:
-        switch_txt = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, "div.controls.switch-controls .whatdo")
-            )
-        )
-
-        switch_txt = switch_txt.text.split(" ")[0]
-
-        print("Switch in text: ", switch_txt)
-
-        switchin = input("Select a switchin: ")
-        try:
-            move_btn = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable(
-                    (By.CSS_SELECTOR, "button[value='" + switchin + "']")
-                )
-            )
-            move_btn.click()
-
-        except:
-            print("Could not find the move")
-    except:
-        print("Error checking if ally needs switch in")
-
-
+# Determine the state of the battle and do appropriate action
+# Returns -1 on error, 1-4 depending on the state
 def determine_state(driver):
     element_n = None
     try:
@@ -630,10 +549,10 @@ def determine_state(driver):
                 EC.element_to_be_clickable(
                     (By.CSS_SELECTOR, "div.battle-controls div.controls div.whatdo")
                 ),
-                EC.element_to_be_clickable(  # Make this check for friendly switch
+                EC.element_to_be_clickable(
                     (By.CSS_SELECTOR, "div.controls.switch-controls .whatdo")
                 ),
-                EC.element_to_be_clickable(  # Make this check for friendly switch
+                EC.element_to_be_clickable(
                     (By.CSS_SELECTOR, "button[name='instantReplay']")
                 ),
             )
@@ -642,9 +561,6 @@ def determine_state(driver):
         print("Could not find either waiting for, or friendly switch or next move.")
         return -1
 
-    # print("intermediate element tag: ", element_n.tag_name)
-    # print("element text: ", element_n.text)
-
     if element_n.tag_name == "em":
         # print("Waiting for opponent found")
         return 1
@@ -652,47 +568,50 @@ def determine_state(driver):
         # print("This is the end of the battle")
         return 4
     elif element_n.text.startswith("What will "):
-        # This should be to choose a move
         # print("This should be to choose a move")
         return 2
-    else:  # startswith("Switch ")
-        # this should be friendly switch
+    elif element_n.text.startswith("Switch "):
         # print("This should be to choose a switch")
         return 3
 
+    return -1
 
+
+# Switch in ally. Returns 0 on success, 1 otherwise
 def switchin_ally(driver):
     switchin = input("Select a switchin: ")
 
-    try:
-        pokemon_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, "button[value='" + switchin + "']")
-            )
-        )
-        pokemon_btn.click()
-    except:
-        print("Could not find the pokemon")
+    # Click on ally
+    if try_click_css(
+        2, driver, 5, "button[value='" + switchin + "']", "Ally Switchin Button", 1
+    ):
+        return 1
+
+    return 0
 
 
-# TODO
-#       Determine the stage of the battle (need to select target,  battle is over, )
-#       Implement control flow for battle
-#       Make a find and click but for CSS Selectors (like the xpath one but for css)
+# TODO s
+#
+#
+#
 #       Adjust timings for certain parts, like waiting for opponent
 #       If dont find something, try to find it again
 #
 #
-#       Check if you need to do a switchin before chosing a move
-#       Check if battle has ended
-#       Handle mid-turn switches from moves like uturn
-# NoSuchElementException
-
-#####START OF MAIN PROGRAM
+#
+#
+#
+#       Be more comprehensive with exceptions where applicable
+#       Save the battle after it concludes
+#       Change some print statements so they output to a log file
+#       Create a log file
+#       If nicknames are not turned off, do not save battle
+#       Do checks for errors in the main segment below
+#       Fix switch ins - cant replicate the problem I had before so its fixed?
 
 
 ##################################################
-#####START
+#####START OF MAIN PROGRAM
 username = "My Name is John Shaft"
 
 driver = open_browser()
@@ -707,10 +626,10 @@ upload_team(driver, "palkiateam.txt", "gen8vgc2021series10")
 
 battle_found = challenge_player(driver, "Dutmeister", "gen8vgc2021series10")
 
-if battle_found:
+if battle_found == 0:
     print("Battle was accepted")
     mute_battle(driver)
-    turnoff_nicknames(driver)  ###
+    turnoff_nicknames(driver)
 
     get_opponents_team(driver, username)
 
@@ -731,6 +650,7 @@ if battle_found:
 
         while 1:
             result = determine_state(driver)
+            print("Resulting State is: ", result)
 
             if result == 1:  # Waiting for
                 wait_for_animations_and_skip(driver)
@@ -763,23 +683,3 @@ else:
 
 driver.quit()
 exit(0)
-
-#####END
-#######################################################
-#####START
-
-
-# NEW CONTROL LOOP AFTER CHOOSE MOVES
-#
-# while(1):
-#     result = oppswitch_allyswitch_wait()
-#
-#     if(oppswitch):
-#         do something
-#     elif(allyswitch):
-#         do something else
-#     else:
-#         break
-
-
-# driver.quit()
