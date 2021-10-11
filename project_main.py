@@ -6,6 +6,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException
 
+import time
+
 
 def open_browser():
     chrome_options = webdriver.ChromeOptions()
@@ -31,6 +33,22 @@ def click_button_xpath_noerror(driver, timeout, word, error_message, error_code)
         btn.click()
     except:
         print("Could not find button through XPATH: ", error_message)
+        return error_code
+
+    return 0
+
+
+# Return 0 on success, returns error code on except
+def click_pokemon_lead(driver, timeout, word, error_message, error_code):
+    try:
+        btn = WebDriverWait(driver, timeout).until(
+            EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, "button[data-tooltip='switchpokemon|" + word + "']")            
+            )
+        )
+        btn.click()
+    except:
+        print("Could not find button through CSS: ", error_message)
         return error_code
 
     return 0
@@ -205,6 +223,8 @@ def challenge_player(driver, opp_name, formatname):
         print("Timed out or could not find open button.")
         return 1
 
+    time.sleep(1)
+
     # Click challenge button
     if try_click_css(
         2, driver, 5, ".ps-popup button[name='challenge']", "Challenge Button", 1
@@ -271,8 +291,8 @@ def mute_battle(driver):
 def select_pokemon(driver, pokemonnamelist):
     for name in pokemonnamelist:
         # Try to find it 1 more time if the first fails
-        if click_button_xpath_noerror(driver, 10, name, "error finding " + name, 1):
-            click_button_xpath_noerror(driver, 10, name, "error finding " + name, 1)
+        if click_pokemon_lead(driver, 10, name, "error finding " + name, 1):
+            click_pokemon_lead(driver, 10, name, "error finding " + name, 1)
 
     wait_for_animations_and_skip(driver)
 
@@ -623,9 +643,9 @@ login(driver, username, "PszczolaLata2189")
 
 select_format_home_page(driver, "gen8vgc2021series10")
 
-upload_team(driver, "palkiateam.txt", "gen8vgc2021series10")
+upload_team(driver, "team.txt", "gen8vgc2021series10")
 
-battle_found = challenge_player(driver, "Dutmeister", "gen8vgc2021series10")
+battle_found = challenge_player(driver, "WonderFluffles", "gen8vgc2021series10")
 
 if battle_found == 0:
     print("Battle was accepted")
