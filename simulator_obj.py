@@ -42,8 +42,8 @@ class simulator:
         torch.cuda.empty_cache()
         
         self.lead_net = NeuralNetTeams(0.01)
-        self.lead_net.to(self.device)
         self.lead_net.load_model('sample_model')
+        self.lead_net.to(self.device)
 
         self.output = queue.Queue()
 
@@ -52,13 +52,25 @@ class simulator:
         return self.output
     
         
-    def findBestMove(self, top_moves=5):
+    def findBestMove(self, is_random=False, top_moves=5):
         
         ms = self.ms
         movedex = self.movedex
-        
-        p1moves = genMoveCombos((ms.team1.active[0], ms.team1.active[1]), 'p1', movedex)
-        p2moves = genMoveCombos((ms.team2.active[0], ms.team2.active[1]), 'p2', movedex)
+
+        p1moves = genMoveCombos(ms.team1.active, 'p1', movedex)
+        p2moves = genMoveCombos(ms.team2.active, 'p2', movedex)
+
+        if is_random:
+            random_move = random.choice(p1moves)
+            print(random_move, end='')
+            
+            move_targets = re.search('p1\ move\ (?P<move1>[1-4])(\ )*(?P<target1>(-1|-2|1|2))?(, move\ (?P<move2>[1-4])(\ )*(?P<target2>(-1|-2|1|2))?)?', random_move)
+
+            for cmd in move_targets.groupdict().values():
+                if cmd:
+                    self.output.put(str(cmd))
+            
+            return move_targets.groupdict().values()
 
         round1 = runSimList(ms, p1moves, p2moves, side=1, sims_proc=30)
         p1best = [x[0] for x in round1[:top_moves]]
@@ -77,7 +89,7 @@ class simulator:
 
         for cmd in move_targets.groupdict().values():
             if cmd:
-                self.output.put(cmd)
+                self.output.put(str(cmd))
 
         return move_targets.groupdict().values()
 
@@ -86,7 +98,7 @@ class simulator:
         '''
         Replace with better predictions
         '''
-        leads = random.sample([0,1,2,3,4,5], 4)
+        leads = random.sample(['0', '1', '2', '3', '4', '5'], 4)
 
         for idx in leads:
             self.output.put(idx)
@@ -99,7 +111,7 @@ class simulator:
         Replace with better predictions
         '''
         # Have to handle dual swap-ins better than just random
-        replacements = random.sample([2, 3], replace)
+        replacements = random.sample(['2', '3'], replace)
 
         for idx in replacements:
             self.output.put(idx)
@@ -279,7 +291,6 @@ class simulator:
         f = open(file, 'r')
 
         for line in f:
-            print(line, end='')
             
             opposing = re.search('opposing', line)
 
@@ -321,6 +332,7 @@ class simulator:
                     if poke.name == match.group('poke'):
                         poke.faint = 'dead'
                         if poke in self.ms.team2.active:
+                            self.ms.team2.fainted = self.ms.team2.active.index(poke) + 1
                             self.ms.team2.active.remove(poke)
                         break
                 continue
@@ -332,25 +344,30 @@ class simulator:
                     if poke.name == match.group('poke'):
                         poke.faint = 'dead'
                         if poke in self.ms.team1.active:
-                            self.ms.team2.active.remove(poke)
+                            self.ms.team1.fainted = self.ms.team1.active.index(poke) + 1
+                            self.ms.team1.active.remove(poke)
                         break
                 continue
 
             # we sent out a new pokemon
-            match = re.search('GO!\ (?P<poke>.+)', line)
+            match = re.search('Go!\ (?P<poke>.+)!', line)
             if match:
                 for poke in self.ms.team1.full:
                     if poke.name == match.group('poke'):
-                        self.ms.team1.active.append(poke)
+                        if self.ms.team1.fainted == 1:
+                            self.ms.team1.active.insert(0, poke)
+                        else:
+                            self.ms.team1.active.append(poke)
                         break
                 continue
 
-            # we sent out a new pokemon
+            # we withdrew a pokemon
             match = re.search('(?P<poke>.+),\ come\ back!', line)
             if match:
                 for poke in self.ms.team1.active:
                     if poke.name == match.group('poke'):
                         if poke in self.ms.team1.active:
+                            self.ms.team1.fainted = self.ms.team1.active.index(poke) + 1
                             self.ms.team1.active.remove(poke)
                         break
                 continue
@@ -359,17 +376,20 @@ class simulator:
             match = re.search('(?P<opponent>.+)\ sent\ out\ (?P<poke>.+)!', line)
             if match:
                 for poke in self.ms.team2.full:
-                    if poke.name == match.group('poke'):
-                        self.ms.team2.active.append(poke)
+                        if self.ms.team2.fainted == 1:
+                            self.ms.team2.active.insert(0, poke)
+                        else:
+                            self.ms.team2.active.append(poke)
+                        break
                         break
                 continue
 
-            # opponent sent out a new pokemon
+            # opponent withdrew out a new pokemon
             match = re.search('(?P<opponent>.+)\ withdrew\ (?P<poke>.+)!', line)
             if match:
                 for poke in self.ms.team2.active:
-                    if poke.name == match.group('poke'):
                         if poke in self.ms.team2.active:
+                            self.ms.team2.fainted = self.ms.team2.active.index(poke) + 1
                             self.ms.team2.active.remove(poke)
                         break
                 continue
@@ -410,7 +430,7 @@ class simulator:
                         break
                 continue
 
-            match = re.search('is\ about\ to\ be\ attacked\ by\ its\ <?P(item).+>(!)?', line)
+            match = re.search('is\ about\ to\ be\ attacked\ by\ its\ (?P<item>.+)(!)?', line)
             if match and opposing:
                 match2 = re.search('opposing\ (?P<poke>.+)\ ', line)
                 for poke in self.ms.team2.full:
@@ -421,7 +441,7 @@ class simulator:
 
             match = re.search('knocked\ off', line)
             if match and opposing:
-                match2 = re.search('opposing\ (?P<poke>.+)\'s\ <?P(item).+>(!)?', line)
+                match2 = re.search('opposing\ (?P<poke>.+)\'s\ (?P<item>.+)(!)?', line)
                 for poke in self.ms.team2.full:
                     if poke.name == match2.group('poke'):
                         poke.item = match2.group('item')
@@ -430,7 +450,7 @@ class simulator:
 
             match = re.search('\ ate\ its\ ', line)
             if match and opposing:
-                match2 = re.search('opposing\ (?P<poke>.+)\ ate\ its\ <?P(item).+>(!)?', line)
+                match2 = re.search('\(The\ opposing\ (?P<poke>.+)\ ate\ its\ (?P<item>.+)!\)', line)
                 for poke in self.ms.team2.full:
                     if poke.name == match2.group('poke'):
                         poke.item = match2.group('item')

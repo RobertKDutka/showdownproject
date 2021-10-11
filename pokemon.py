@@ -61,6 +61,7 @@ class team:
         self.full = []                # all six pokemon
         self.active = []              # p1a, p1b  /   p2a, p2b
         self.side_conditions = []     # lightscreen, etc
+        self.fainted = 0
         
 class state:
     

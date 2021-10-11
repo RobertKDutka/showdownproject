@@ -5,7 +5,35 @@ def genMoveCombos(pokes, side, movedex, hitAlly=False):
     Todo: Only one active pokemon
     
     '''
+
+    if len(pokes) == 2:
+        return moveCombosPair(pokes, side, movedex, hitAlly)
+    else:
+        return moveCombosSingle(pokes, side, movedex, hitAlly)
     
+def moveCombosSingle(pokes, side, movedex, hitAlly=False):
+    
+    poke = pokes[0]
+    base = ">" + side
+    combos = []
+
+    p1 = poke.moves + poke.pred_moves[:4 - len(poke.moves)]
+    
+    moves1 = []
+    
+    for m1 in p1:
+        moves1.append(targetChoices(m1, ' -2', movedex, False))
+    
+    for i1 in range(len(p1)):
+        m1 = base + ' move ' + str(i1 + 1)
+        for t1 in moves1[i1]:
+            m2 = m1 + t1 + '\n'
+            combos.append(m2)
+    
+    return combos
+                    
+def moveCombosPair(pokes, side, movedex, hitAlly=False):
+
     poke1 = pokes[0]
     poke2 = pokes[1]
     
@@ -35,10 +63,9 @@ def genMoveCombos(pokes, side, movedex, hitAlly=False):
                     combos.append(m4)
 
     return combos
-                    
-    
+
 def targetChoices(move, ally, movedex, hitAlly=False):
-    v = movedex[move.lower()]
+    v = movedex[move.lower().replace(' ', '')]
     
     if v == 'adjacentAlly':
         return [ally]

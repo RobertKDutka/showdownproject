@@ -7,6 +7,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException
 
 import time
+from simulator_obj import simulator
 
 
 def open_browser():
@@ -392,7 +393,8 @@ def get_move_targetting(driver, movenum):
 # Attempt to select a move for a pokemon for a turn. Return 0 on success, and 1 on failure
 # TODO instead of input() tell predictor what you are expecting
 def pokemon_turn(driver):
-    move = input("Select a move: ")
+    global q
+    move = q.get()
 
     if move == "switch":
         pokemon_switch = input("Select switch in: ")
@@ -410,7 +412,7 @@ def pokemon_turn(driver):
         return 1
 
     if does_move_target:
-        movetarget = input("Select target: ")
+        movetarget = q.get()
         if select_move_target(driver, movetarget):
             return 1
 
@@ -425,6 +427,12 @@ def update_battle_history(driver, last_turn_num):
         "div.inner.message-log h2.battle-history:nth-of-type("
         + str(last_turn_num)
         + ")"
+    )
+
+    #  Find the leads and the pre-first turn stuff
+    if last_turn_num == 0:
+        css_selector = (
+        "div.inner.message-log div.chat.battle-history"
     )
 
     with open("battle-history.txt", "w") as f:
@@ -475,7 +483,8 @@ def get_opponents_team(driver, my_name):
         if trainer != my_name.replace(" ", ""):
             opponent_team = team.text.split("\n")[1]
             print(opponent_team)
-            return 0
+            print(opponent_team.replace(' ', '').split('/'))
+            return opponent_team.replace(' ', '').split('/')
         else:
             raise ValueError("This team is not the opponent.")
     except ValueError:
@@ -491,7 +500,7 @@ def get_opponents_team(driver, my_name):
             if trainer != my_name.replace(" ", ""):
                 opponent_team = team.text.split("\n")[1]
                 print(opponent_team)
-                return 0
+                return opponent_team.replace(' ', '').split('/')
             else:
                 raise ValueError("Could not find opponent team.")
         except:
@@ -600,11 +609,12 @@ def determine_state(driver):
 
 # Switch in ally. Returns 0 on success, 1 otherwise
 def switchin_ally(driver):
-    switchin = input("Select a switchin: ")
+    global q
+    switchin = q.get()
 
     # Click on ally
     if try_click_css(
-        2, driver, 5, "button[value='" + switchin + "']", "Ally Switchin Button", 1
+        2, driver, 5, "button[value='" + switchin + "']", "Ally Switchin Button " + switchin, 1
     ):
         return 1
 
@@ -652,18 +662,30 @@ if battle_found == 0:
     mute_battle(driver)
     turnoff_nicknames(driver)
 
-    get_opponents_team(driver, username)
+    opponent_team = get_opponents_team(driver, username)
+
+    print('Importing teams')
+    s = simulator('team.txt', opponent_team)
+    q = s.get_output()
+
+    print('Selecting lead')
+    s.select_lead()
 
     pokemonlist = []
     for i in range(4):
-        pokemonlist.append(input("Select a pokemon: "))
+        pokemonlist.append(q.get())
 
     select_pokemon(driver, pokemonlist)
 
     # wait for opponent maybe
+    print('Finding leads')
+    history = update_battle_history(driver, 0)
+    print('Found leads')
 
     i = 1
     while 1:
+        s.parse_battle_history()
+        s.findBestMove(is_random=True)
         pokemon_turn(driver)
 
         if not is_one_remaining(driver):
@@ -678,6 +700,7 @@ if battle_found == 0:
             elif result == 2:  # You choose next move
                 break
             elif result == 3:  # You need to make a switch
+                s.select_replacement()
                 switchin_ally(driver)
                 pass
             elif result == 4:  # Found end of battle text

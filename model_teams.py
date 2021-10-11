@@ -119,7 +119,8 @@ class NeuralNetTeams(torch.nn.Module):
         torch.save(self, path)
 
     def load_model(self, path):
-        self = torch.load(path)
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self = torch.load(path, map_location=device)
     
     
     
