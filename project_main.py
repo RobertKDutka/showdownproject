@@ -685,12 +685,15 @@ if battle_found == 0:
     i = 1
     while 1:
         s.parse_battle_history()
-        s.findBestMove(is_random=True)
+        print('Running predictions')
+        s.findBestMove(is_random=False)
+        print('Finished predictions')
         pokemon_turn(driver)
 
         if not is_one_remaining(driver):
             pokemon_turn(driver)
 
+        try_again = True
         while 1:
             result = determine_state(driver)
             print("Resulting State is: ", result)
@@ -708,7 +711,11 @@ if battle_found == 0:
                 break
             else:
                 print("Error with determining state.")
-                break
+                if try_again:
+                    try_again = False
+                    continue
+                else:
+                    break
 
         history = update_battle_history(driver, i)
         if history == 0:  # normal turn

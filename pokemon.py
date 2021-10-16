@@ -8,8 +8,6 @@ class pokemon:
     item = ''
     pred_item = ''
     
-    moves = []
-    pred_moves = []
     max_moves = []
     
     nature = ''
@@ -17,13 +15,16 @@ class pokemon:
     
     typing = []
     
-    faint = 'alive'
     first_turn = True
     protected = False
     
     def __init__(self, pokename):
         self.name = pokename
         self.hp = 100  # Current hp
+        self.faint = 'alive'
+
+        self.moves = []
+        self.pred_moves = []
         
         self.stats = {'hp':100,  # Max HP
                      'atk':101,

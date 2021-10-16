@@ -40,8 +40,18 @@ def moveCombosPair(pokes, side, movedex, hitAlly=False):
     base = ">" + side
     combos = []
     
-    p1 = poke1.moves + poke1.pred_moves[:4 - len(poke1.moves)]
-    p2 = poke2.moves + poke2.pred_moves[:4 - len(poke2.moves)]
+    p1 = poke1.moves
+    i = 0
+    while len(p1) < 4:
+        if poke1.pred_moves[i] not in p1:
+            p1.append(poke1.pred_moves[i])
+        i += 1
+    p2 = poke2.moves
+    i = 0
+    while len(p2) < 4:
+        if poke2.pred_moves[i] not in p2:
+            p2.append(poke2.pred_moves[i])
+        i += 1
     
     moves1 = []
     moves2 = []

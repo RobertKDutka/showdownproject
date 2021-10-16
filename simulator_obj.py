@@ -7,6 +7,7 @@ from model_teams import NeuralNetTeams
 import torch
 import queue
 import random
+import os
 
 '''
 Todo:
@@ -57,12 +58,15 @@ class simulator:
         ms = self.ms
         movedex = self.movedex
 
+        f = open("ms.pkl", "wb")
+        pickle.dump(ms, f)
+        f.close()
+
         p1moves = genMoveCombos(ms.team1.active, 'p1', movedex)
         p2moves = genMoveCombos(ms.team2.active, 'p2', movedex)
 
-        if is_random:
+        if is_random or len(ms.team1.active) == 1 or len(ms.team2.active) == 1:
             random_move = random.choice(p1moves)
-            print(random_move, end='')
             
             move_targets = re.search('p1\ move\ (?P<move1>[1-4])(\ )*(?P<target1>(-1|-2|1|2))?(, move\ (?P<move2>[1-4])(\ )*(?P<target2>(-1|-2|1|2))?)?', random_move)
 
@@ -71,21 +75,16 @@ class simulator:
                     self.output.put(str(cmd))
             
             return move_targets.groupdict().values()
-
-        round1 = runSimList(ms, p1moves, p2moves, side=1, sims_proc=30)
-        p1best = [x[0] for x in round1[:top_moves]]
-
-        round2 = runSimList(ms, p1best, p2moves, side=2, sims_proc=40)
-        p2best = [x[0] for x in round2[:top_moves]]
-
-        round3 = runSimList(ms, p1moves, p2best, side=1, sims_proc=50)
-        final_moves = [x[0] for x in round3[:top_moves]]
-
-        best_move = final_moves[0]
         
+        os.system('python3 run_sim.py')
+
+        f = open("best_move.txt", "r")
+        best_move = f.readline()
+        f.close()
+
         # Todo: One pokemon remaining
-    
-        move_targets = re.search('p1\ move\ (?P<move1>[1-4])(\ )?(?P<target1>(-1|-2|1|2))?, move\ (?P<move2>[1-4])(\ )?(?P<target2>(-1|-2|1|2))?', best_move)
+
+        move_targets = re.search(r'p1\ move\ (?P<move1>[1-4])(\ )?(?P<target1>(-1|-2|1|2))?\ *(,\ move\ (?P<move2>[1-4])(\ )?(?P<target2>(-1|-2|1|2))?)?', best_move)
 
         for cmd in move_targets.groupdict().values():
             if cmd:
@@ -349,6 +348,18 @@ class simulator:
                         break
                 continue
 
+            # opponent sent out a new pokemon
+            match = re.search('(?P<opponent>.+)\ sent\ out\ (?P<poke>.+)!', line)
+            if match:
+                for poke in self.ms.team2.full:
+                    if poke.name == match.group('poke'):
+                        if self.ms.team2.fainted == 1:
+                            self.ms.team2.active.insert(0, poke)
+                        else:
+                            self.ms.team2.active.append(poke)
+                        break
+                continue
+
             # we sent out a new pokemon
             match = re.search('Go!\ (?P<poke>.+)!', line)
             if match:
@@ -361,6 +372,16 @@ class simulator:
                         break
                 continue
 
+            # opponent withdrew out a new pokemon
+            match = re.search('(?P<opponent>.+)\ withdrew\ (?P<poke>.+)!', line)
+            if match:
+                for poke in self.ms.team2.active:
+                        if poke in self.ms.team2.active:
+                            self.ms.team2.fainted = self.ms.team2.active.index(poke) + 1
+                            self.ms.team2.active.remove(poke)
+                        break
+                continue
+
             # we withdrew a pokemon
             match = re.search('(?P<poke>.+),\ come\ back!', line)
             if match:
@@ -369,28 +390,6 @@ class simulator:
                         if poke in self.ms.team1.active:
                             self.ms.team1.fainted = self.ms.team1.active.index(poke) + 1
                             self.ms.team1.active.remove(poke)
-                        break
-                continue
-
-            # opponent sent out a new pokemon
-            match = re.search('(?P<opponent>.+)\ sent\ out\ (?P<poke>.+)!', line)
-            if match:
-                for poke in self.ms.team2.full:
-                        if self.ms.team2.fainted == 1:
-                            self.ms.team2.active.insert(0, poke)
-                        else:
-                            self.ms.team2.active.append(poke)
-                        break
-                        break
-                continue
-
-            # opponent withdrew out a new pokemon
-            match = re.search('(?P<opponent>.+)\ withdrew\ (?P<poke>.+)!', line)
-            if match:
-                for poke in self.ms.team2.active:
-                        if poke in self.ms.team2.active:
-                            self.ms.team2.fainted = self.ms.team2.active.index(poke) + 1
-                            self.ms.team2.active.remove(poke)
                         break
                 continue
 

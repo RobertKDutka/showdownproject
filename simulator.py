@@ -1,5 +1,9 @@
+from os import kill
+from pickle import TRUE
 import subprocess, shlex
 from multiprocessing import Process, Queue, current_process
+# from threading import Thread
+# import queue
 from pokemon import *
 import time
 import sys
@@ -24,22 +28,43 @@ def runSimList(state, p1moves, p2moves, side=1, sims_proc=10):
     
     threads = []
     results = Queue()
+    # results = queue.Queue()
     
     # start process
+    i = 0
     if side == 1:
         for move in p1moves:
+            print('\t\t', len(p1moves), end='\r')
             t = Process(target=simWrapperList, args=(results, state, move, p2moves, side, sims_proc))
+            # t = Thread(target=simWrapperList, args=(results, state, move, p2moves, side, sims_proc))
             t.start()
             threads.append(t)
     else:
         for move in p2moves:
+            print('\t\t', len(p2moves), end='\r')
             t = Process(target=simWrapperList, args=(results, state, p1moves, move, side, sims_proc))
+            # t = Thread(target=simWrapperList, args=(results, state, p1moves, move, side, sims_proc))
             t.start()
             threads.append(t)
     
     # Wait for sim to end
+    i = 1
+    is_it_time_to_kill = False
+    kill_list = []
     for t in threads:
-        t.join()
+        if is_it_time_to_kill:
+            t.join(0.05)
+        else:
+            t.join(10)
+        if t.exitcode == None:
+            print('\t\t\t\tKilling', i, end='\r')
+            is_it_time_to_kill = True
+            t.terminate()
+            kill_list.append(i)
+        print('\t\t\t', i, end='\r')
+        i += 1
+
+    print('a', end='\r')
     
     scores = []
     # Getting the results
@@ -48,7 +73,8 @@ def runSimList(state, p1moves, p2moves, side=1, sims_proc=10):
         if r == 'Error':
             pass
         else:
-            scores.append(r)
+            if r[2] not in kill_list:
+                scores.append(r)
     
     scores.sort(key=lambda x:-x[1])
     
@@ -62,6 +88,7 @@ def runSimList(state, p1moves, p2moves, side=1, sims_proc=10):
         
 def simWrapperList(q, state, p1moves, p2moves, side, sims_proc=10):
     q.put( repeatSimList(state, p1moves, p2moves, side, sims_proc) )
+    print(q.qsize(), end='\r')
                     
 
         
@@ -69,7 +96,6 @@ def repeatSimList(state, p1moves, p2moves, side=1, num_sims=20):
     '''
         Sets up the sim multiple times per process instead of only one
     '''
-    
     
     proc = subprocess.Popen(shlex.split(showdown_cmd), 
                         stdout=subprocess.PIPE, 
@@ -94,9 +120,9 @@ def repeatSimList(state, p1moves, p2moves, side=1, num_sims=20):
     # Select the first two since they are active
     
     proc.stdin.write('>p1 team 1234\n')
-    proc.stdin.write('>p2 team 1234\n')
+    proc.stdin.write('>p2 team 2134\n')
     prin('>p1 team 1234\n')
-    prin('>p2 team 1234\n')
+    prin('>p2 team 2134\n')
     
     score = 0.0
     result = None
@@ -120,10 +146,14 @@ def repeatSimList(state, p1moves, p2moves, side=1, num_sims=20):
         # Run moves
 
         if side == 1:
+            if type(choice(p2moves)) != str:
+                p2moves = p2moves[0]
             proc.stdin.write(p1moves)
             proc.stdin.write(choice(p2moves))
             
         else:
+            while type(choice(p1moves)) != str:
+                p1moves = p1moves[0]
             proc.stdin.write(choice(p1moves))
             proc.stdin.write(p2moves)
             
@@ -164,26 +194,26 @@ def repeatSimList(state, p1moves, p2moves, side=1, num_sims=20):
                     '''
                     
                     
-                    i = 0
+                    faint_count = 0
                     for poke in newState.team1.active:
                         if poke.faint == 'dead':
-                            i += 1
+                            faint_count += 1
                     
-                    if i > 0:
+                    if faint_count > 0:
                         cmd = ">p1 switch 3"
-                        if i == 2:
+                        if faint_count == 2:
                             cmd += ', switch 4'
                         cmd += '\n'
                         proc.stdin.write(cmd)
                     
-                    i = 0
+                    faint_count = 0
                     for poke in newState.team2.active:
                         if poke.faint == 'dead':
-                            i += 1
+                            faint_count += 1
                     
-                    if i > 0:
+                    if faint_count > 0:
                         cmd = ">p2 switch 3"
-                        if i == 2:
+                        if faint_count == 2:
                             cmd += ', switch 4'
                         cmd += '\n'
                         proc.stdin.write(cmd)
@@ -198,17 +228,23 @@ def repeatSimList(state, p1moves, p2moves, side=1, num_sims=20):
                     g.close()
 #                     f.close()
                     proc.kill()
-                    if side == 1:
-                        return (p1moves, score / i)
+                    if side == 1 and i > 0:
+                        return (p1moves, score / i, current_process()._identity[0])
+                    elif side == 2 and i > 0:
+                        return (p2moves, score / i, current_process()._identity[0])
+                    elif side == 1:
+                        # return (p1moves, 0, current_process()._identity[0])
+                        return 'Error'
                     else:
-                        return (p2moves, score / i)
+                        # return (p2moves, 0, current_process()._identity[0])
+                        return 'Error'
                 
 #     f.close()
     proc.kill()
     if side == 1:
-        return (p1moves, score / num_sims)
+        return (p1moves, score / num_sims, current_process()._identity[0])
     else:
-        return (p2moves, score / num_sims)
+        return (p2moves, score / num_sims, current_process()._identity[0])
 
     
     
@@ -335,26 +371,26 @@ def repeatSim(state, moves, num_sims=20):
                     '''
                     
                     
-                    i = 0
+                    faint_count = 0
                     for poke in newState.team1.active:
                         if poke.faint == 'dead':
-                            i += 1
+                            faint_count += 1
                     
-                    if i > 0:
+                    if faint_count > 0:
                         cmd = ">p1 switch 3"
-                        if i == 2:
+                        if faint_count == 2:
                             cmd += ', switch 4'
                         cmd += '\n'
                         proc.stdin.write(cmd)
                     
-                    i = 0
+                    faint_count = 0
                     for poke in newState.team2.active:
                         if poke.faint == 'dead':
-                            i += 1
+                            faint_count += 1
                     
-                    if i > 0:
+                    if faint_count > 0:
                         cmd = ">p2 switch 3"
-                        if i == 2:
+                        if faint_count == 2:
                             cmd += ', switch 4'
                         cmd += '\n'
                         proc.stdin.write(cmd)
