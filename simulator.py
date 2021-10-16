@@ -1,17 +1,11 @@
-from os import kill
-from pickle import TRUE
 import subprocess, shlex
 from multiprocessing import Process, Queue, current_process
-# from threading import Thread
-# import queue
 from pokemon import *
-import time
-import sys
 import copy
-import re
 from sim_parser import outputParser
 from heuristics import *
 from random import choice
+from watchdog import Watchdog
 
 # showdown_cmd = './showdownsimulator/pokemon-showdown/pokemon-showdown simulate-battle'
 showdown_cmd = 'node showdownsimulator/pokemon-showdown/pokemon-showdown simulate-battle'
@@ -19,6 +13,8 @@ showdown_cmd = 'node showdownsimulator/pokemon-showdown/pokemon-showdown simulat
 def prin(*args):
     if False:
         print(*args)
+
+
 
 def runSimList(state, p1moves, p2moves, side=1, sims_proc=10):
     # state: pokemon on both sides, weather, etc
@@ -28,7 +24,6 @@ def runSimList(state, p1moves, p2moves, side=1, sims_proc=10):
     
     threads = []
     results = Queue()
-    # results = queue.Queue()
     
     # start process
     i = 0
@@ -36,35 +31,30 @@ def runSimList(state, p1moves, p2moves, side=1, sims_proc=10):
         for move in p1moves:
             print('\t\t', len(p1moves), end='\r')
             t = Process(target=simWrapperList, args=(results, state, move, p2moves, side, sims_proc))
-            # t = Thread(target=simWrapperList, args=(results, state, move, p2moves, side, sims_proc))
             t.start()
             threads.append(t)
     else:
         for move in p2moves:
             print('\t\t', len(p2moves), end='\r')
             t = Process(target=simWrapperList, args=(results, state, p1moves, move, side, sims_proc))
-            # t = Thread(target=simWrapperList, args=(results, state, p1moves, move, side, sims_proc))
             t.start()
             threads.append(t)
     
     # Wait for sim to end
     i = 1
-    is_it_time_to_kill = False
-    kill_list = []
-    for t in threads:
-        if is_it_time_to_kill:
-            t.join(0.05)
-        else:
-            t.join(10)
-        if t.exitcode == None:
-            print('\t\t\t\tKilling', i, end='\r')
-            is_it_time_to_kill = True
+    watchdog = Watchdog(10)
+    try:
+        while len(threads) > 0:
+            for t in threads:
+                t.join(0.01)
+                if t.exitcode != None:
+                    threads.remove(t)
+                    print('\t\t\t', i, end='\r')
+                    i += 1
+    except Exception:
+        for t in threads:
             t.terminate()
-            kill_list.append(i)
-        print('\t\t\t', i, end='\r')
-        i += 1
-
-    print('a', end='\r')
+    watchdog.stop()
     
     scores = []
     # Getting the results
@@ -73,14 +63,11 @@ def runSimList(state, p1moves, p2moves, side=1, sims_proc=10):
         if r == 'Error':
             pass
         else:
-            if r[2] not in kill_list:
-                scores.append(r)
+            scores.append(r)
     
     scores.sort(key=lambda x:-x[1])
     
     best = max(scores, key=lambda x:x[1])
-    
-#     print('Best:\t', best)
     
     return scores
 
@@ -113,20 +100,13 @@ def repeatSimList(state, p1moves, p2moves, side=1, num_sims=20):
     proc.stdin.write(team_one)
     proc.stdin.write(team_two)      
     
-    prin('>start {"formatid":"vgc"}\n')
-    prin(team_one)
-    prin(team_two)
-    
     # Select the first two since they are active
     
     proc.stdin.write('>p1 team 1234\n')
     proc.stdin.write('>p2 team 2134\n')
-    prin('>p1 team 1234\n')
-    prin('>p2 team 2134\n')
     
     score = 0.0
     result = None
-#     f = open('outputs/' + current_process()._name + '.txt', 'w')
 
     for i in range(num_sims):
     
@@ -134,9 +114,6 @@ def repeatSimList(state, p1moves, p2moves, side=1, num_sims=20):
 
         proc.stdin.write('>p1 reviveAll\n')
         proc.stdin.write('>p2 reviveAll\n')
-        
-        prin('>p1 reviveAll\n')
-        prin('>p2 reviveAll\n')
         
         updateSide(proc.stdin, state.team1)
         updateSide(proc.stdin, state.team2)
@@ -169,11 +146,6 @@ def repeatSimList(state, p1moves, p2moves, side=1, num_sims=20):
                 # Parser here with update to state
                 result = outputParser(line, newState, result)
                 
-                # result is for special commands, ex. volt switch
-                # It is not the new state
-#                 f.write(line)
-#                 f.flush()
-                
 
                 if result != None:
                     if result[1] == 'do switch':
@@ -189,11 +161,8 @@ def repeatSimList(state, p1moves, p2moves, side=1, num_sims=20):
                     
                     score += heuristic(state, newState, side)
                     
-                    '''
-                        Check for fainted pokemon and swap and alter
-                    '''
-                    
-                    
+                    # Check for fainted pokemon and swap and alter
+
                     faint_count = 0
                     for poke in newState.team1.active:
                         if poke.faint == 'dead':
@@ -226,253 +195,22 @@ def repeatSimList(state, p1moves, p2moves, side=1, num_sims=20):
                     g = open('outputs/error' + str(current_process()._name) + '.txt', 'w')
                     g.write(line)
                     g.close()
-#                     f.close()
                     proc.kill()
                     if side == 1 and i > 0:
-                        return (p1moves, score / i, current_process()._identity[0])
+                        return (p1moves, score / i)
                     elif side == 2 and i > 0:
-                        return (p2moves, score / i, current_process()._identity[0])
+                        return (p2moves, score / i)
                     elif side == 1:
-                        # return (p1moves, 0, current_process()._identity[0])
                         return 'Error'
                     else:
-                        # return (p2moves, 0, current_process()._identity[0])
                         return 'Error'
                 
-#     f.close()
     proc.kill()
     if side == 1:
-        return (p1moves, score / num_sims, current_process()._identity[0])
+        return (p1moves, score / num_sims)
     else:
-        return (p2moves, score / num_sims, current_process()._identity[0])
+        return (p2moves, score / num_sims)
 
-    
-    
-def runSim(state, moves, num_sims=1, sims_proc=10):
-    # state: pokemon on both sides, weather, etc
-    # moves: desired move combos    
-    
-    threads = []
-    results = Queue()
-    
-    # start process
-    for i in range(num_sims):
-        
-        t = Process(target=simWrapper, args=(results, state, moves, sims_proc))
-        t.start()
-        threads.append(t)
-
-    i = 0
-    # Wait for sim to end
-    for t in threads:
-        t.join()
-        i += 1
-    
-    score = 0
-    i = 0
-    # Getting the results
-    while not results.empty():
-        r = results.get()
-        if r == 'Error':
-            print('Error:', i)
-        else:
-            score += r
-        i += 1
-        
-    score /= i
-    
-    print(score, moves)
-
-    
-    
-def simWrapper(q, state, moves, sims_proc=10):
-    q.put(repeatSim(state, moves, sims_proc))
-               
-        
-
-def repeatSim(state, moves, num_sims=20):
-    '''
-        Sets up the sim multiple times per process instead of only one
-    '''
-    
-    
-    proc = subprocess.Popen(shlex.split(showdown_cmd), 
-                        stdout=subprocess.PIPE, 
-                        stderr=subprocess.PIPE, 
-                        stdin=subprocess.PIPE, 
-                        bufsize=1, 
-                        universal_newlines=True)
-
-    
-    proc.stdin.write('>start {"formatid":"vgc"}\n')
-
-    team_one = '>player p1 {"name":"Alice","team":"'+ teamToPack(state.team1) + '"}\n'
-    team_two = '>player p2 {"name":"Bobby","team":"'+ teamToPack(state.team2) + '"}\n'
-
-    proc.stdin.write(team_one)
-    proc.stdin.write(team_two)      
-    
-    prin('>start {"formatid":"vgc"}\n')
-    prin(team_one)
-    prin(team_two)
-    
-    # Select the first two since they are active
-    
-    proc.stdin.write('>p1 team 1234\n')
-    proc.stdin.write('>p2 team 1234\n')
-    prin('>p1 team 1234\n')
-    prin('>p2 team 1234\n')
-    
-    score = 0.0
-#     f = open('outputs/threads' + str(j) + '.txt', 'w')
-
-    for i in range(num_sims):
-    
-        # update to current state
-
-        proc.stdin.write('>p1 reviveAll\n')
-        proc.stdin.write('>p2 reviveAll\n')
-        
-        prin('>p1 reviveAll\n')
-        prin('>p2 reviveAll\n')
-        
-        updateSide(proc.stdin, state.team1)
-        updateSide(proc.stdin, state.team2)
-
-        updateField(proc.stdin, state)
-
-        # Run moves
-
-        proc.stdin.write(moves[0])
-        proc.stdin.write(moves[1])
-
-        newState = copy.deepcopy(state)
-    #     newState = state
-        exit_phase = '|upkeep'
-        reading = True
-
-        while reading:
-
-            for line in iter(proc.stdout.readline, ''):
-
-                # Parser here with update to state
-                outputParser(line, newState)
-#                 f.write(line)
-#                 f.flush()
-
-                if (exit_phase in line):
-                    # Run heuristic here
-                    reading = False
-                    
-                    score += heuristic(state, newState)
-                    
-                    '''
-                        Check for fainted pokemon and swap and alter
-                    '''
-                    
-                    
-                    faint_count = 0
-                    for poke in newState.team1.active:
-                        if poke.faint == 'dead':
-                            faint_count += 1
-                    
-                    if faint_count > 0:
-                        cmd = ">p1 switch 3"
-                        if faint_count == 2:
-                            cmd += ', switch 4'
-                        cmd += '\n'
-                        proc.stdin.write(cmd)
-                    
-                    faint_count = 0
-                    for poke in newState.team2.active:
-                        if poke.faint == 'dead':
-                            faint_count += 1
-                    
-                    if faint_count > 0:
-                        cmd = ">p2 switch 3"
-                        if faint_count == 2:
-                            cmd += ', switch 4'
-                        cmd += '\n'
-                        proc.stdin.write(cmd)
-                    break
-                            
-
-
-                if ('|error|' in line):
-                    proc.kill()
-                    g = open('outputs/error.txt', 'a')
-                    g.write(line)
-                    g.close()
-#                     f.flush()
-#                     f.close()
-                    return "Error"
-                
-    proc.kill()
-#     f.close()
-    return score / num_sims
-
-
-
-def sim(state, moves):
-
-    
-    proc = subprocess.Popen(shlex.split(showdown_cmd), 
-                        stdout=subprocess.PIPE, 
-                        stderr=subprocess.PIPE, 
-                        stdin=subprocess.PIPE, 
-                        bufsize=1, 
-                        universal_newlines=True)
-
-    
-    proc.stdin.write('>start {"formatid":"vgc"}\n')
-
-    team_one = '>player p1 {"name":"Alice","team":"'+ teamToPack(state.team1) + '"}\n'
-    team_two = '>player p2 {"name":"Bobby","team":"'+ teamToPack(state.team2) + '"}\n'
-
-    proc.stdin.write(team_one)
-    proc.stdin.write(team_two)      
-
-    
-    # Select the first two since they are active
-    
-    proc.stdin.write('>p1 team 1234\n')
-    proc.stdin.write('>p2 team 1234\n')
-
-    # update to current state
-
-    
-    updateSide(proc.stdin, state.team1)
-    updateSide(proc.stdin, state.team2)
-
-    updateField(proc.stdin, state)
-    
-    # Run move
-
-    for move in moves:
-        proc.stdin.write(move[0])
-        proc.stdin.write(move[1])
-    
-    newState = copy.deepcopy(state)
-#     newState = state
-    exit_phase = '|turn|' + str(len(moves) + 1)
-
-    while True:
-
-        for line in iter(proc.stdout.readline, ''):
-
-            # Parser here with update to state
-            outputParser(line, newState)
-
-            if (exit_phase in line):
-                # Run heuristic here
-
-                proc.kill()
-                return (heuristic(state, newState))
-
-            if ('|error|' in line):
-                proc.kill()
-                return "Error"
-                    
 
 
 def updateField(proc_input, state):
