@@ -78,7 +78,7 @@ int updateStatus(team* squad, char* name, int status) {
 
    int index = findIndex(squad, name);
    if(index >= 0) {
-      if(squad->brought[index] > 0) { return 0; }
+      if(squad->brought[index] != 0) { return 0; }
       squad->brought[index] = status;
       return 0;
    }
@@ -163,7 +163,7 @@ void printTeamInfo(team* squad, FILE* fp) {
 
       if(squad->brought[i] == 0) {
          fprintf(fp, "(Not brought to battle)\n");
-      } else if(squad->brought[i] == 1) {
+      } else if(squad->brought[i] == 1 || squad->brought[i] == -1) {
          fprintf(fp, "<Pokemon brought in back");
          if(squad->brought[i] < 0) {
             fprintf(fp, ", dynamaxed");

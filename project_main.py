@@ -6,6 +6,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException
 
+import time
+from simulator_obj import simulator
+
 
 def open_browser():
     chrome_options = webdriver.ChromeOptions()
@@ -13,7 +16,8 @@ def open_browser():
     chrome_options.add_experimental_option("prefs", prefs)
     chrome_options.add_experimental_option("excludeSwitches", ["enable-logging"])
     service = Service(
-        "C:/Users/Robert Dutka/Desktop/showdown-project/webdrivers/chromedriver.exe"
+        "C:/Users/Krzysztof Dutka/OneDrive/Desktop/Showdown Project/showdownproject/webdrivers/chromedriver.exe"
+        # "C:/Users/Robert Dutka/Desktop/showdown-project/webdrivers/chromedriver.exe"
     )
 
     driver = webdriver.Chrome(options=chrome_options, service=service)
@@ -30,6 +34,22 @@ def click_button_xpath_noerror(driver, timeout, word, error_message, error_code)
         btn.click()
     except:
         print("Could not find button through XPATH: ", error_message)
+        return error_code
+
+    return 0
+
+
+# Return 0 on success, returns error code on except
+def click_pokemon_lead(driver, timeout, word, error_message, error_code):
+    try:
+        btn = WebDriverWait(driver, timeout).until(
+            EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, "button[data-tooltip='switchpokemon|" + word + "']")            
+            )
+        )
+        btn.click()
+    except:
+        print("Could not find button through CSS: ", error_message)
         return error_code
 
     return 0
@@ -204,6 +224,8 @@ def challenge_player(driver, opp_name, formatname):
         print("Timed out or could not find open button.")
         return 1
 
+    time.sleep(1)
+
     # Click challenge button
     if try_click_css(
         2, driver, 5, ".ps-popup button[name='challenge']", "Challenge Button", 1
@@ -270,8 +292,8 @@ def mute_battle(driver):
 def select_pokemon(driver, pokemonnamelist):
     for name in pokemonnamelist:
         # Try to find it 1 more time if the first fails
-        if click_button_xpath_noerror(driver, 10, name, "error finding " + name, 1):
-            click_button_xpath_noerror(driver, 10, name, "error finding " + name, 1)
+        if click_pokemon_lead(driver, 10, name, "error finding " + name, 1):
+            click_pokemon_lead(driver, 10, name, "error finding " + name, 1)
 
     wait_for_animations_and_skip(driver)
 
@@ -371,7 +393,8 @@ def get_move_targetting(driver, movenum):
 # Attempt to select a move for a pokemon for a turn. Return 0 on success, and 1 on failure
 # TODO instead of input() tell predictor what you are expecting
 def pokemon_turn(driver):
-    move = input("Select a move: ")
+    global q
+    move = q.get()
 
     if move == "switch":
         pokemon_switch = input("Select switch in: ")
@@ -389,7 +412,7 @@ def pokemon_turn(driver):
         return 1
 
     if does_move_target:
-        movetarget = input("Select target: ")
+        movetarget = q.get()
         if select_move_target(driver, movetarget):
             return 1
 
@@ -404,6 +427,12 @@ def update_battle_history(driver, last_turn_num):
         "div.inner.message-log h2.battle-history:nth-of-type("
         + str(last_turn_num)
         + ")"
+    )
+
+    #  Find the leads and the pre-first turn stuff
+    if last_turn_num == 0:
+        css_selector = (
+        "div.inner.message-log div.chat.battle-history"
     )
 
     with open("battle-history.txt", "w") as f:
@@ -454,7 +483,8 @@ def get_opponents_team(driver, my_name):
         if trainer != my_name.replace(" ", ""):
             opponent_team = team.text.split("\n")[1]
             print(opponent_team)
-            return 0
+            print(opponent_team.replace(' ', '').split('/'))
+            return opponent_team.replace(' ', '').split('/')
         else:
             raise ValueError("This team is not the opponent.")
     except ValueError:
@@ -470,7 +500,7 @@ def get_opponents_team(driver, my_name):
             if trainer != my_name.replace(" ", ""):
                 opponent_team = team.text.split("\n")[1]
                 print(opponent_team)
-                return 0
+                return opponent_team.replace(' ', '').split('/')
             else:
                 raise ValueError("Could not find opponent team.")
         except:
@@ -579,11 +609,12 @@ def determine_state(driver):
 
 # Switch in ally. Returns 0 on success, 1 otherwise
 def switchin_ally(driver):
-    switchin = input("Select a switchin: ")
+    global q
+    switchin = q.get()
 
     # Click on ally
     if try_click_css(
-        2, driver, 5, "button[value='" + switchin + "']", "Ally Switchin Button", 1
+        2, driver, 5, "button[value='" + switchin + "']", "Ally Switchin Button " + switchin, 1
     ):
         return 1
 
@@ -622,32 +653,47 @@ login(driver, username, "PszczolaLata2189")
 
 select_format_home_page(driver, "gen8vgc2021series10")
 
-upload_team(driver, "palkiateam.txt", "gen8vgc2021series10")
+upload_team(driver, "team.txt", "gen8vgc2021series10")
 
-battle_found = challenge_player(driver, "Dutmeister", "gen8vgc2021series10")
+battle_found = challenge_player(driver, "WonderFluffles", "gen8vgc2021series10")
 
 if battle_found == 0:
     print("Battle was accepted")
     mute_battle(driver)
     turnoff_nicknames(driver)
 
-    get_opponents_team(driver, username)
+    opponent_team = get_opponents_team(driver, username)
+
+    print('Importing teams')
+    s = simulator('team.txt', opponent_team)
+    q = s.get_output()
+
+    print('Selecting lead')
+    s.select_lead()
 
     pokemonlist = []
     for i in range(4):
-        pokemonlist.append(input("Select a pokemon: "))
+        pokemonlist.append(q.get())
 
     select_pokemon(driver, pokemonlist)
 
     # wait for opponent maybe
+    print('Finding leads')
+    history = update_battle_history(driver, 0)
+    print('Found leads')
 
     i = 1
     while 1:
+        s.parse_battle_history()
+        print('Running predictions')
+        s.findBestMove(is_random=False)
+        print('Finished predictions')
         pokemon_turn(driver)
 
         if not is_one_remaining(driver):
             pokemon_turn(driver)
 
+        try_again = True
         while 1:
             result = determine_state(driver)
             print("Resulting State is: ", result)
@@ -657,6 +703,7 @@ if battle_found == 0:
             elif result == 2:  # You choose next move
                 break
             elif result == 3:  # You need to make a switch
+                s.select_replacement()
                 switchin_ally(driver)
                 pass
             elif result == 4:  # Found end of battle text
@@ -664,7 +711,11 @@ if battle_found == 0:
                 break
             else:
                 print("Error with determining state.")
-                break
+                if try_again:
+                    try_again = False
+                    continue
+                else:
+                    break
 
         history = update_battle_history(driver, i)
         if history == 0:  # normal turn
