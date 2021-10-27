@@ -1,13 +1,12 @@
 import pokemon
 from poke_utils import *
-from simulator import runSimList
+import subprocess, shlex
 from pokemon_statistics import *
 import pickle
 from model_teams import NeuralNetTeams
 import torch
 import queue
 import random
-import os
 from watchdog import Watchdog
 
 '''
@@ -69,15 +68,16 @@ class simulator:
         if is_random or len(ms.team1.active) == 1 or len(ms.team2.active) == 1:
             return self.randomMove(p1moves)
         
-        watchdog = Watchdog(40)
+        p = subprocess.Popen(shlex.split('python3 run_sim.py'))
         try:
-            os.system('python3 run_sim.py')
+            p.wait(timeout=40)
             f = open("best_move.txt", "r")
             best_move = f.readline()
             f.close()
-        except Exception:
+        except subprocess.TimeoutExpired as e:
+            # Process is taking too long to return, kill and return random
+            p.kill()
             return self.randomMove(p1moves)
-        watchdog.stop()
 
         # Todo: One pokemon remaining
 

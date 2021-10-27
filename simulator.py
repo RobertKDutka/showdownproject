@@ -29,13 +29,13 @@ def runSimList(state, p1moves, p2moves, side=1, sims_proc=10):
     i = 0
     if side == 1:
         for move in p1moves:
-            print('\t\t', len(p1moves), end='\r')
+            print('\t', len(p1moves), end='\r')
             t = Process(target=simWrapperList, args=(results, state, move, p2moves, side, sims_proc))
             t.start()
             threads.append(t)
     else:
         for move in p2moves:
-            print('\t\t', len(p2moves), end='\r')
+            print('\t', len(p2moves), end='\r')
             t = Process(target=simWrapperList, args=(results, state, p1moves, move, side, sims_proc))
             t.start()
             threads.append(t)
@@ -43,18 +43,19 @@ def runSimList(state, p1moves, p2moves, side=1, sims_proc=10):
     # Wait for sim to end
     i = 1
     watchdog = Watchdog(10)
-    try:
-        while len(threads) > 0:
-            for t in threads:
-                t.join(0.01)
-                if t.exitcode != None:
-                    threads.remove(t)
-                    print('\t\t\t', i, end='\r')
-                    i += 1
-    except Exception:
+    while len(threads) > 0 and watchdog.flag:
+        for t in threads:
+            t.join(0.01)
+            if t.exitcode != None:
+                threads.remove(t)
+                print('\t\t\t', i, end='\r')
+                i += 1
+    watchdog.stop()
+
+    while len(threads) > 0:
+        print('Some process hung or are taking too long to join')
         for t in threads:
             t.terminate()
-    watchdog.stop()
     
     scores = []
     # Getting the results
