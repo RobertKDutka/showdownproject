@@ -18,18 +18,21 @@ if __name__ == "__main__":
     p1moves = genMoveCombos(ms.team1.active, 'p1', movedex)
     p2moves = genMoveCombos(ms.team2.active, 'p2', movedex)
 
-    print('  \t', 1, end='\r')
-
+    print('  \t\t', 1, '\t  ', end='\r')
 
     round1 = runSimList(ms, p1moves, p2moves, side=1, sims_proc=30)
     p1best = [x[0] for x in round1[:5]]
 
-    print('  \t', 2, end='\r')
+    print('  \t\t', 2, '\t  ', end='\r')
+
+    f = open("best_move.txt", "w")
+    f.write(p1best[0])
+    f.close()
 
     round2 = runSimList(ms, p1best, p2moves, side=2, sims_proc=30)
     p2best = [x[0] for x in round2[:5]]
 
-    print('  \t', 3, end='\r')
+    print('  \t\t', 3, '\t  ', end='\r')
 
     round3 = runSimList(ms, p1moves, p2best, side=1, sims_proc=30)
     final_moves = [x[0] for x in round3[:5]]

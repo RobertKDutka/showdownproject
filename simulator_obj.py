@@ -1,13 +1,13 @@
 import pokemon
 from poke_utils import *
-from simulator import runSim, runSimList
+import subprocess, shlex
 from pokemon_statistics import *
 import pickle
 from model_teams import NeuralNetTeams
 import torch
 import queue
 import random
-import os
+from watchdog import Watchdog
 
 '''
 Todo:
@@ -66,21 +66,18 @@ class simulator:
         p2moves = genMoveCombos(ms.team2.active, 'p2', movedex)
 
         if is_random or len(ms.team1.active) == 1 or len(ms.team2.active) == 1:
-            random_move = random.choice(p1moves)
-            
-            move_targets = re.search('p1\ move\ (?P<move1>[1-4])(\ )*(?P<target1>(-1|-2|1|2))?(, move\ (?P<move2>[1-4])(\ )*(?P<target2>(-1|-2|1|2))?)?', random_move)
-
-            for cmd in move_targets.groupdict().values():
-                if cmd:
-                    self.output.put(str(cmd))
-            
-            return move_targets.groupdict().values()
+            return self.randomMove(p1moves)
         
-        os.system('python3 run_sim.py')
-
-        f = open("best_move.txt", "r")
-        best_move = f.readline()
-        f.close()
+        p = subprocess.Popen(shlex.split('python3 run_sim.py'))
+        try:
+            p.wait(timeout=40)
+            f = open("best_move.txt", "r")
+            best_move = f.readline()
+            f.close()
+        except subprocess.TimeoutExpired as e:
+            # Process is taking too long to return, kill and return random
+            p.kill()
+            return self.randomMove(p1moves)
 
         # Todo: One pokemon remaining
 
@@ -92,6 +89,16 @@ class simulator:
 
         return move_targets.groupdict().values()
 
+    def randomMove(self, p1moves):
+        random_move = random.choice(p1moves)
+            
+        move_targets = re.search('p1\ move\ (?P<move1>[1-4])(\ )*(?P<target1>(-1|-2|1|2))?(, move\ (?P<move2>[1-4])(\ )*(?P<target2>(-1|-2|1|2))?)?', random_move)
+
+        for cmd in move_targets.groupdict().values():
+            if cmd:
+                self.output.put(str(cmd))
+        
+        return move_targets.groupdict().values()
 
     def select_lead(self):
         '''

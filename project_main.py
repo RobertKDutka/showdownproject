@@ -600,7 +600,7 @@ def determine_state(driver):
     elif element_n.text.startswith("What will "):
         # print("This should be to choose a move")
         return 2
-    elif element_n.text.startswith("Switch "):
+    elif element_n.text.startswith("Switch ") or element_n.text.startswith("Back") or element_n.text.startswith("Choose"):
         # print("This should be to choose a switch")
         return 3
 
