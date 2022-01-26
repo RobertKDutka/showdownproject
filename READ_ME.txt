@@ -1,6 +1,6 @@
 To use this, create a folder in TBAnalyzed that will contain the games for a certain team. 
 
-./parser <folder name>
+./stripper <folder name>
 --This will go through all games in the folder and create/add to a folder of that same name in "ProcessedGames"
 --The html files will be deleted once all the important info is stripped (not deleting yet in case i want more info)
 
