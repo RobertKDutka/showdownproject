@@ -9,6 +9,9 @@ from selenium.common.exceptions import TimeoutException
 import time
 from simulator_obj import simulator
 
+import tkinter as tk
+from tkinter import StringVar
+
 
 def open_browser():
     chrome_options = webdriver.ChromeOptions()
@@ -95,7 +98,6 @@ def login(driver, username, password):
     except:
         print("Timed out or could not find username box.")
         return 1
-
     # Click submit
     if try_click_css(
         2, driver, 5, ".buttonbar button[type='submit']", "Submit Button", 1
@@ -224,7 +226,6 @@ def challenge_player(driver, opp_name, formatname):
         print("Timed out or could not find open button.")
         return 1
 
-    time.sleep(1)
 
     # Click challenge button
     if try_click_css(
@@ -651,11 +652,11 @@ driver.get("https://play.pokemonshowdown.com/")
 
 login(driver, username, "PszczolaLata2189")
 
-select_format_home_page(driver, "gen8vgc2021series10")
+select_format_home_page(driver, "gen8vgc2022")
 
-upload_team(driver, "team.txt", "gen8vgc2021series10")
+upload_team(driver, "team.txt", "gen8vgc2022")
 
-battle_found = challenge_player(driver, "WonderFluffles", "gen8vgc2021series10")
+battle_found = challenge_player(driver, "WonderFluffles", "gen8vgc2022")
 
 if battle_found == 0:
     print("Battle was accepted")
