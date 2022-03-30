@@ -1,0 +1,9 @@
+If multiple battles on same html, only pick 1st one.
+
+If the enemy team is named first, the Game Profile is all null and the team order is wrong
+
+findIndex(team, name) only compares first 5 letters b/c of form names being mixed. 
+
+project_main will occassionally not find the challenge button - could be if the other user is not online (possible fix by waiting 1 sec before looking)
+
+project main problem with switching

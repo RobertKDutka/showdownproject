@@ -1,0 +1,7 @@
+Game_Profiles/
+ProcessedGames/
+TBAnalyzed/
+teams/
+venv/
+webdrivers/
+pokemon_profiles.db
