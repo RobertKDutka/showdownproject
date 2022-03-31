@@ -6,6 +6,7 @@ At this point I should clean up the repo, put files in actual directories and ac
 Then you can restructure the code to be more modular so switching between prediction mechanisms is possible and start adding more features/improving existing ones.
 
 BIG TODO: Go through all the files and assign an authorship to it
+          Clean up the repo. There are many unnecessary files
 
 TLDR - If someone says they are "working" and "dont need help" they might be lying
 
