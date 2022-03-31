@@ -5,9 +5,9 @@ The next step is to fix the prediction mechanisms to make them minimally functio
 At this point I should clean up the repo, put files in actual directories and actually organize the files, add comments to code so they arent just blobs (even if its not the most complicated code idc comment everything), etc. etc.
 Then you can restructure the code to be more modular so switching between prediction mechanisms is possible and start adding more features/improving existing ones.
 
-BIG TODO: Go through all the files and assign an authorship to it, i.e. did I edit the file or did my brother or both of us
+BIG TODO: Go through all the files and assign an authorship to it
 
-TLDR - If someone says they are "working" and "dont need help" they might be lying. sometimes you have to breathe down the neck of people you think you can trust
+TLDR - If someone says they are "working" and "dont need help" they might be lying
 
 
 
