@@ -202,6 +202,7 @@ def updatePred(pokemon, pika_stats):
         pokemon.pred_moves.append(moves[i].replace(" ", ""))
 
     if pokemon.ability == "":
+        print("Line 205:", abilities)  # REMOVE IF CLEANING
         pokemon.pred_ability = abilities[0].replace(" ", "")
 
     if pokemon.item == "":
@@ -213,6 +214,7 @@ def updatePred(pokemon, pika_stats):
 def createPikalyticsPokemon(pokename):
     poke = pokemon(pokename)
     poke_stats = getPikalytics(pokename)
+    print(poke_stats)  # REMOVE IF CLEANING
 
     calcStats(poke, poke_stats)
     updatePred(poke, poke_stats)

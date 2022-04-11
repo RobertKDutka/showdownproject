@@ -226,6 +226,7 @@ def challenge_player(driver, opp_name, formatname):
         print("Timed out or could not find open button.")
         return 1
 
+    # This helps to prevent a deadlock where the button is unclickable
     time.sleep(1)
 
     # Click challenge button

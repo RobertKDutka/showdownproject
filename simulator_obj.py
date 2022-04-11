@@ -258,7 +258,9 @@ class simulator:
 
         for poke in oppo_team:
             print(poke)  # REMOVE ME IF CLEANING
-            oppo.full.append(createPikalyticsPokemon(poke))
+            temp = createPikalyticsPokemon(poke)
+            print(temp.ability)
+            oppo.full.append(temp)
 
         return oppo
 
